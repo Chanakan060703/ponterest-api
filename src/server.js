@@ -17,16 +17,19 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+app.get("/health", (req, res) => {
+    res.status(200).json({ status: "ok" });
+});
+
 app.use("/users", userRoutes);
 app.use("/auth", authRoutes);
 app.use("/categories", categoryRoutes);
 app.use("/tags", tagRoutes);
 app.use("/images", imageRoutes);
 
-
-const port = 5001;
+const port = Number(process.env.PORT) || 5001;
 const server = app.listen(port, () =>{
-    console.log(`Server is running on port ${port}`)
+    console.log(`Server is running on port ${port}`);
 });
 
 let isShuttingDown = false;
