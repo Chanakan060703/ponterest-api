@@ -1,5 +1,6 @@
 import express from 'express';
 import {config} from 'dotenv';
+import cookieParser from "cookie-parser";
 import { connectDB, disconnectDB } from './config/db.js';
 
 import userRoutes from './routers/userRoutes.js';
@@ -14,6 +15,7 @@ await connectDB();
 
 const app = express();
 
+app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
