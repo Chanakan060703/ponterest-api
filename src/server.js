@@ -5,6 +5,8 @@ import { connectDB, disconnectDB } from './config/db.js';
 import userRoutes from './routers/userRoutes.js';
 import authRoutes from './routers/authRoutes.js';
 import categoryRoutes from './routers/categoryRoutes.js';
+import tagRoutes from './routers/tagRoutes.js';
+import imageRoutes from './routers/imageRoutes.js';
 
 config();
 
@@ -18,6 +20,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/users", userRoutes);
 app.use("/auth", authRoutes);
 app.use("/categories", categoryRoutes);
+app.use("/tags", tagRoutes);
+app.use("/images", imageRoutes);
 
 
 const port = 5001;
