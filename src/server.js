@@ -1,10 +1,13 @@
 import express from 'express';
 import {config} from 'dotenv';
+import cookieParser from "cookie-parser";
 import { connectDB, disconnectDB } from './config/db.js';
 
 import userRoutes from './routers/userRoutes.js';
 import authRoutes from './routers/authRoutes.js';
 import categoryRoutes from './routers/categoryRoutes.js';
+import tagRoutes from './routers/tagRoutes.js';
+import imageRoutes from './routers/imageRoutes.js';
 
 config();
 
@@ -12,17 +15,23 @@ await connectDB();
 
 const app = express();
 
+app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+app.get("/health", (req, res) => {
+    res.status(200).json({ status: "ok" });
+});
 
 app.use("/users", userRoutes);
 app.use("/auth", authRoutes);
 app.use("/categories", categoryRoutes);
+app.use("/tags", tagRoutes);
+app.use("/images", imageRoutes);
 
-
-const port = 5001;
+const port = Number(process.env.PORT) || 5001;
 const server = app.listen(port, () =>{
-    console.log(`Server is running on port ${port}`)
+    console.log(`Server is running on port ${port}`);
 });
 
 let isShuttingDown = false;
