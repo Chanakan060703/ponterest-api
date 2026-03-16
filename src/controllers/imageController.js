@@ -287,5 +287,136 @@ const deleteImage = async (req, res) => {
     }
 };
 
-export { getImages, getImageById, createImage, updateImage, deleteImage };
+const getImageTags = async (req, res) => {
+    try {
+        const id = parseId(req.params.id);
+        if (id === null) return res.status(400).json({ error: "Invalid id" });
 
+        const image = await prisma.image.findFirst({
+            where: { id, isDeleted: false },
+            include: {
+                imageTags: {
+                    where: { isDeleted: false, tag: { isDeleted: false } },
+                    include: { tag: true },
+                },
+            },
+        });
+
+        if (!image) return res.status(404).json({ error: "Image not found" });
+
+        return res.status(200).json({
+            status: "success",
+            message: "Image tags fetched successfully",
+            data: { tags: mapImageTagsToTags(image.imageTags) },
+        });
+    } catch (error) {
+        const httpError = toHttpError(error);
+        return res.status(httpError.status).json({ error: httpError.message });
+    }
+};
+
+const addImageTags = async (req, res) => {
+    try {
+        const imageId = parseId(req.params.id);
+        if (imageId === null) return res.status(400).json({ error: "Invalid id" });
+
+        const { tagIds } = req.body;
+        if (!Array.isArray(tagIds) || tagIds.length === 0) {
+            return res.status(400).json({ error: "tagIds must be a non-empty array" });
+        }
+
+        const parsed = tagIds.map(parseId);
+        if (parsed.some((t) => t === null)) return res.status(400).json({ error: "tagIds must be numbers" });
+        const tagIdList = Array.from(new Set(parsed));
+
+        const image = await prisma.image.findFirst({
+            where: { id: imageId, isDeleted: false },
+            select: { id: true },
+        });
+        if (!image) return res.status(404).json({ error: "Image not found" });
+
+        const tagsCount = await prisma.tag.count({
+            where: { id: { in: tagIdList }, isDeleted: false },
+        });
+        if (tagsCount !== tagIdList.length) {
+            return res.status(400).json({ error: "One or more tags not found" });
+        }
+
+        const existing = await prisma.imageTag.findMany({
+            where: { imageId, tagId: { in: tagIdList } },
+            select: { tagId: true, isDeleted: true },
+        });
+        const existingByTagId = new Map(existing.map((r) => [r.tagId, r]));
+
+        const toUndelete = tagIdList.filter((t) => existingByTagId.get(t)?.isDeleted === true);
+        if (toUndelete.length > 0) {
+            await prisma.imageTag.updateMany({
+                where: { imageId, tagId: { in: toUndelete } },
+                data: { isDeleted: false },
+            });
+        }
+
+        const toCreate = tagIdList.filter((t) => !existingByTagId.has(t));
+        if (toCreate.length > 0) {
+            await prisma.imageTag.createMany({
+                data: toCreate.map((tagId) => ({ imageId, tagId })),
+            });
+        }
+
+        return res.status(200).json({
+            status: "success",
+            message: "Image tags updated successfully",
+            data: { imageId, tagIds: tagIdList },
+        });
+    } catch (error) {
+        const httpError = toHttpError(error);
+        return res.status(httpError.status).json({ error: httpError.message });
+    }
+};
+
+const removeImageTag = async (req, res) => {
+    try {
+        const imageId = parseId(req.params.id);
+        const tagId = parseId(req.params.tagId);
+        if (imageId === null) return res.status(400).json({ error: "Invalid id" });
+        if (tagId === null) return res.status(400).json({ error: "Invalid tagId" });
+
+        const image = await prisma.image.findFirst({
+            where: { id: imageId, isDeleted: false },
+            select: { id: true },
+        });
+        if (!image) return res.status(404).json({ error: "Image not found" });
+
+        const existing = await prisma.imageTag.findFirst({
+            where: { imageId, tagId, isDeleted: false },
+            select: { id: true },
+        });
+
+        if (!existing) return res.status(404).json({ error: "Tag relation not found" });
+
+        await prisma.imageTag.updateMany({
+            where: { imageId, tagId },
+            data: { isDeleted: true },
+        });
+
+        return res.status(200).json({
+            status: "success",
+            message: "Image tag removed successfully",
+            data: { imageId, tagId },
+        });
+    } catch (error) {
+        const httpError = toHttpError(error);
+        return res.status(httpError.status).json({ error: httpError.message });
+    }
+};
+
+export {
+    getImages,
+    getImageById,
+    createImage,
+    updateImage,
+    deleteImage,
+    getImageTags,
+    addImageTags,
+    removeImageTag,
+};
