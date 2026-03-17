@@ -30,7 +30,8 @@ app.use("/tags", tagRoutes);
 app.use("/images", imageRoutes);
 
 const port = Number(process.env.PORT) || 5001;
-const server = app.listen(port, () =>{
+const host = process.env.HOST || "localhost";
+const server = app.listen(port,host, () =>{
     console.log(`Server is running on port ${port}`);
 });
 

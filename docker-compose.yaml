@@ -9,12 +9,54 @@ services:
       POSTGRES_DB: postgres
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U root -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
   redis:
     image: redis:8
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      target: runtime
+    ports:
+      - "5001:5001"
+    env_file:
+      - .env
+    environment:
+      HOST: 0.0.0.0
+      PORT: 5001
+      NODE_ENV: production
+      DATABASE_URL: postgresql://root:12345678@postgres:5432/postgres?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  migrate:
+    profiles: ["tools"]
+    build:
+      context: .
+      target: migrate
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://root:12345678@postgres:5432/postgres?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 volumes:
   postgres_data:
