@@ -1,5 +1,6 @@
 import express from "express";
 import { authMiddleware } from "../middleware/authMiddleware.js";
+import { uploadImageMiddleware } from "../middleware/uploadImageMiddleware.js";
 import {
     addImageTags,
     createImage,
@@ -8,6 +9,7 @@ import {
     getImages,
     getImageTags,
     removeImageTag,
+    uploadImage,
     updateImage,
 } from "../controllers/imageController.js";
 
@@ -18,6 +20,7 @@ router.get("/:id/tags", getImageTags);
 router.get("/:id", getImageById);
 
 router.post("/", authMiddleware, createImage);
+router.put("/upload-image", authMiddleware, uploadImageMiddleware, uploadImage);
 router.put("/:id", authMiddleware, updateImage);
 router.delete("/:id", authMiddleware, deleteImage);
 
