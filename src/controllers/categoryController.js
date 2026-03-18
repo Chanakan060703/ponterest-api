@@ -18,12 +18,12 @@ const createCategory = async (req, res) => {
 
         const category = existing
             ? await prisma.category.update({
-                  where: { id: existing.id },
-                  data: { isDeleted: false },
-              })
+                where: { id: existing.id },
+                data: { isDeleted: false },
+            })
             : await prisma.category.create({
-                  data: { name: name.trim() },
-              });
+                data: { name: name.trim() },
+            });
 
         return res.status(201).json({
             status: "success",

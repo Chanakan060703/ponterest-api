@@ -18,12 +18,12 @@ const createTag = async (req, res) => {
 
         const tag = existing
             ? await prisma.tag.update({
-                  where: { id: existing.id },
-                  data: { isDeleted: false },
-              })
+                where: { id: existing.id },
+                data: { isDeleted: false },
+            })
             : await prisma.tag.create({
-                  data: { name: name.trim() },
-              });
+                data: { name: name.trim() },
+            });
 
         return res.status(201).json({
             status: "success",
