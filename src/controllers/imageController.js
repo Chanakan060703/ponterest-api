@@ -44,18 +44,15 @@ const getImages = async (req, res) => {
     try {
         const categoryId = req.query.categoryId ? parseId(req.query.categoryId) : null;
         const tagId = req.query.tagId ? parseId(req.query.tagId) : null;
+        const page = Math.max(1, parseInt(req.query.page) || 1);
+        const limit = Math.max(1, parseInt(req.query.limit) || 10);
+        const skip = (page - 1) * limit;
 
         if (req.query.categoryId && categoryId === null) {
             return res.status(400).json({ error: "Invalid categoryId" });
         }
         if (req.query.tagId && tagId === null) {
             return res.status(400).json({ error: "Invalid tagId" });
-        }
-
-        const cacheKey = buildImageListCacheKey(categoryId, tagId);
-        const cachedResponse = await getCachedJson(cacheKey);
-        if (cachedResponse) {
-            return res.status(200).json(cachedResponse);
         }
 
         const where = {
@@ -75,16 +72,22 @@ const getImages = async (req, res) => {
             category: { is: { isDeleted: false } },
         };
 
-        const images = await prisma.image.findMany({
-            where,
-            include: {
-                category: true,
-                imageTags: {
-                    where: { isDeleted: false, tag: { is: { isDeleted: false } } },
-                    include: { tag: true },
+        const [images, totalCount] = await Promise.all([
+            prisma.image.findMany({
+                where,
+                skip,
+                take: limit,
+                orderBy: { createdAt: "desc" },
+                include: {
+                    category: true,
+                    imageTags: {
+                        where: { isDeleted: false, tag: { is: { isDeleted: false } } },
+                        include: { tag: true },
+                    },
                 },
-            },
-        });
+            }),
+            prisma.image.count({ where }),
+        ]);
 
         const data = images.map((img) => ({
             ...img,
@@ -95,10 +98,18 @@ const getImages = async (req, res) => {
         const responseBody = {
             status: "success",
             message: "Images fetched successfully",
-            data: { images: data },
+            data: { 
+                images: data,
+                pagination: {
+                    currentPage: page,
+                    limit,
+                    totalCount,
+                    totalPages: Math.ceil(totalCount / limit),
+                    hasNextPage: page < Math.ceil(totalCount / limit),
+                }
+            },
         };
 
-        await setCachedJson(cacheKey, responseBody, IMAGE_CACHE_TTL_SECONDS);
         return res.status(200).json(responseBody);
     } catch (error) {
         const httpError = toHttpError(error);
