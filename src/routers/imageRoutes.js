@@ -7,6 +7,7 @@ import {
     deleteImage,
     getImageById,
     getImages,
+    searchImages,
     getImageByTags,
     removeImageTag,
     uploadImage,
@@ -17,6 +18,7 @@ import {
 const router = express.Router();
 
 router.get("/", getImages);
+router.get("/search", searchImages);
 router.get("/tags", getImageByTags);
 router.get("/categories/:id/images", getImageByCategory);
 router.get("/:id", getImageById);
