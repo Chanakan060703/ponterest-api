@@ -1,9 +1,24 @@
 import { prisma } from "../config/db.js";
+import { deleteByPrefix, getCachedJson, setCachedJson } from "../config/redis.js";
 import { toHttpError } from "../utils/prismaErrors.js";
+
+const IMAGE_CACHE_TTL_SECONDS = Number(process.env.IMAGE_CACHE_TTL_SECONDS) || 300;
+const IMAGE_CACHE_PREFIX = "images:";
 
 const parseId = (value) => {
     const id = Number(value);
     return Number.isFinite(id) ? id : null;
+};
+
+const toCacheKeyPart = (value) => (value === null || value === undefined ? "all" : String(value));
+
+const buildImageListCacheKey = (categoryId, tagId) =>
+    `${IMAGE_CACHE_PREFIX}list:category=${toCacheKeyPart(categoryId)}:tag=${toCacheKeyPart(tagId)}`;
+
+const buildImageDetailCacheKey = (id) => `${IMAGE_CACHE_PREFIX}detail:${id}`;
+
+const invalidateImageCache = async () => {
+    await deleteByPrefix(IMAGE_CACHE_PREFIX);
 };
 
 const mapImageTagsToTags = (imageTags) =>
@@ -23,19 +38,25 @@ const getImages = async (req, res) => {
             return res.status(400).json({ error: "Invalid tagId" });
         }
 
+        const cacheKey = buildImageListCacheKey(categoryId, tagId);
+        const cachedResponse = await getCachedJson(cacheKey);
+        if (cachedResponse) {
+            return res.status(200).json(cachedResponse);
+        }
+
         const where = {
             isDeleted: false,
             ...(categoryId !== null ? { categoryId } : {}),
             ...(tagId !== null
                 ? {
-                      imageTags: {
-                          some: {
-                              tagId,
-                              isDeleted: false,
-                              tag: { isDeleted: false },
-                          },
-                      },
-                  }
+                    imageTags: {
+                        some: {
+                            tagId,
+                            isDeleted: false,
+                            tag: { isDeleted: false },
+                        },
+                    },
+                }
                 : {}),
             category: { isDeleted: false },
         };
@@ -57,11 +78,14 @@ const getImages = async (req, res) => {
             imageTags: undefined,
         }));
 
-        return res.status(200).json({
+        const responseBody = {
             status: "success",
             message: "Images fetched successfully",
             data: { images: data },
-        });
+        };
+
+        await setCachedJson(cacheKey, responseBody, IMAGE_CACHE_TTL_SECONDS);
+        return res.status(200).json(responseBody);
     } catch (error) {
         const httpError = toHttpError(error);
         return res.status(httpError.status).json({ error: httpError.message });
@@ -72,6 +96,12 @@ const getImageById = async (req, res) => {
     try {
         const id = parseId(req.params.id);
         if (id === null) return res.status(400).json({ error: "Invalid id" });
+
+        const cacheKey = buildImageDetailCacheKey(id);
+        const cachedResponse = await getCachedJson(cacheKey);
+        if (cachedResponse) {
+            return res.status(200).json(cachedResponse);
+        }
 
         const image = await prisma.image.findFirst({
             where: { id, isDeleted: false, category: { isDeleted: false } },
@@ -86,7 +116,7 @@ const getImageById = async (req, res) => {
 
         if (!image) return res.status(404).json({ error: "Image not found" });
 
-        return res.status(200).json({
+        const responseBody = {
             status: "success",
             message: "Image fetched successfully",
             data: {
@@ -96,7 +126,10 @@ const getImageById = async (req, res) => {
                     imageTags: undefined,
                 },
             },
-        });
+        };
+
+        await setCachedJson(cacheKey, responseBody, IMAGE_CACHE_TTL_SECONDS);
+        return res.status(200).json(responseBody);
     } catch (error) {
         const httpError = toHttpError(error);
         return res.status(httpError.status).json({ error: httpError.message });
@@ -153,6 +186,7 @@ const createImage = async (req, res) => {
                 data: tagIdList.map((tagId) => ({ imageId: image.id, tagId })),
             });
         }
+        await invalidateImageCache();
 
         return res.status(201).json({
             status: "success",
@@ -249,6 +283,7 @@ const updateImage = async (req, res) => {
                 });
             }
         }
+        await invalidateImageCache();
 
         return res.status(200).json({
             status: "success",
@@ -275,6 +310,7 @@ const deleteImage = async (req, res) => {
             where: { id },
             data: { isDeleted: true },
         });
+        await invalidateImageCache();
 
         return res.status(200).json({
             status: "success",
@@ -362,6 +398,7 @@ const addImageTags = async (req, res) => {
                 data: toCreate.map((tagId) => ({ imageId, tagId })),
             });
         }
+        await invalidateImageCache();
 
         return res.status(200).json({
             status: "success",
@@ -398,6 +435,7 @@ const removeImageTag = async (req, res) => {
             where: { imageId, tagId },
             data: { isDeleted: true },
         });
+        await invalidateImageCache();
 
         return res.status(200).json({
             status: "success",

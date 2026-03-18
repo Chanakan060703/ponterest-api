@@ -2,6 +2,7 @@ import express from 'express';
 import {config} from 'dotenv';
 import cookieParser from "cookie-parser";
 import { connectDB, disconnectDB } from './config/db.js';
+import { connectRedis, disconnectRedis } from "./config/redis.js";
 
 import userRoutes from './routers/userRoutes.js';
 import authRoutes from './routers/authRoutes.js';
@@ -12,6 +13,7 @@ import imageRoutes from './routers/imageRoutes.js';
 config();
 
 await connectDB();
+await connectRedis();
 
 const app = express();
 
@@ -42,6 +44,7 @@ const shutdown = async (reason, exitCode) => {
 
     try {
         console.log(`Shutting down (${reason})`);
+        await disconnectRedis();
         await disconnectDB();
     } catch (error) {
         console.error("Error during shutdown:", error);

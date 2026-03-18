@@ -39,6 +39,9 @@ services:
       PORT: 5001
       NODE_ENV: production
       DATABASE_URL: postgresql://root:12345678@postgres:5432/postgres?schema=public
+      REDIS_URL: redis://redis:6379
+      REDIS_ENABLED: "true"
+      IMAGE_CACHE_TTL_SECONDS: 300
     depends_on:
       postgres:
         condition: service_healthy
