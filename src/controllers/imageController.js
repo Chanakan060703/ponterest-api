@@ -102,6 +102,64 @@ const getImages = async (req, res) => {
     }
 };
 
+const searchImages = async (req, res) => {
+    try {
+        const search = typeof req.query.search === "string" ? req.query.search.trim() : "";
+        const baseWhere = {
+            isDeleted: false,
+            category: { is: { isDeleted: false } },
+        };
+        const where = search
+            ? {
+                ...baseWhere,
+                OR: [
+                    { name: { contains: search, mode: "insensitive" } },
+                    { category: { is: { name: { contains: search, mode: "insensitive" }, isDeleted: false } } },
+                    {
+                        imageTags: {
+                            some: {
+                                isDeleted: false,
+                                tag: {
+                                    is: {
+                                        isDeleted: false,
+                                        name: { contains: search, mode: "insensitive" },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                ],
+            }
+            : baseWhere;
+
+        const images = await prisma.image.findMany({
+            where,
+            include: {
+                category: true,
+                imageTags: {
+                    where: { isDeleted: false, tag: { is: { isDeleted: false } } },
+                    include: { tag: true },
+                },
+            },
+        });
+
+        const data = images.map((img) => ({
+            ...img,
+            tags: mapImageTagsToTags(img.imageTags),
+            imageTags: undefined,
+        }));
+
+        return res.status(200).json({
+            status: "success",
+            message: "Images searched successfully",
+            data: { images: data },
+        });
+    } catch (error) {
+        const httpError = toHttpError(error);
+        return res.status(httpError.status).json({ error: httpError.message });
+    }
+};
+
 const getImageById = async (req, res) => {
     try {
         const id = parseId(req.params.id);
@@ -574,6 +632,7 @@ const uploadImage = async (req, res) => {
 
 export {
     getImages,
+    searchImages,
     getImageById,
     createImage,
     updateImage,
