@@ -7,16 +7,19 @@ import {
     deleteImage,
     getImageById,
     getImages,
-    getImageTags,
+    getImageByTags,
     removeImageTag,
     uploadImage,
     updateImage,
+    getImageByCategory,
 } from "../controllers/imageController.js";
 
 const router = express.Router();
 
 router.get("/", getImages);
-router.get("/:id/tags", getImageTags);
+router.get("/tags", getImageByTags);
+router.get("/tags/:id", getImageByTags);
+router.get("/categories/:id/images", getImageByCategory);
 router.get("/:id", getImageById);
 
 router.post("/", authMiddleware, createImage);

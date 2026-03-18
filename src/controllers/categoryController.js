@@ -36,6 +36,7 @@ const createCategory = async (req, res) => {
     }
 };
 
+
 const getCategories = async (req, res) => {
     try {
         const categories = await prisma.category.findMany({
@@ -52,6 +53,7 @@ const getCategories = async (req, res) => {
         return res.status(httpError.status).json({ error: httpError.message });
     }
 };
+
 
 const updateCategory = async (req, res) => {
     try {
@@ -99,6 +101,7 @@ const updateCategory = async (req, res) => {
         return res.status(httpError.status).json({ error: httpError.message });
     }
 };
+
 
 const deleteCategory = async (req, res) => {
     try {
