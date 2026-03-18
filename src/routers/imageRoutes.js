@@ -18,7 +18,6 @@ const router = express.Router();
 
 router.get("/", getImages);
 router.get("/tags", getImageByTags);
-router.get("/tags/:id", getImageByTags);
 router.get("/categories/:id/images", getImageByCategory);
 router.get("/:id", getImageById);
 

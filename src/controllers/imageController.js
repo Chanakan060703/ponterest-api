@@ -377,7 +377,7 @@ const getImageByTags = async (req, res) => {
         return res.status(200).json({
             status: "success",
             message: "Images by tag fetched successfully",
-            data: { tags, matchedTagIds: tagIds, images: data },
+            data: { images: data },
         });
     } catch (error) {
         const httpError = toHttpError(error);
@@ -421,7 +421,7 @@ const getImageByCategory = async (req, res) => {
         return res.status(200).json({
             status: "success",
             message: "Images by category fetched successfully",
-            data: { category, images: data },
+            data: {images: data },
         });
     } catch (error) {
         const httpError = toHttpError(error);
