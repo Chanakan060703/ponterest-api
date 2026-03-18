@@ -25,16 +25,20 @@ const toCacheKeyPart = (value) => (value === null || value === undefined ? "all"
 const buildImageListCacheKey = (categoryId, tagId) =>
     `${IMAGE_CACHE_PREFIX}list:category=${toCacheKeyPart(categoryId)}:tag=${toCacheKeyPart(tagId)}`;
 
+
 const buildImageDetailCacheKey = (id) => `${IMAGE_CACHE_PREFIX}detail:${id}`;
+
 
 const invalidateImageCache = async () => {
     await deleteByPrefix(IMAGE_CACHE_PREFIX);
 };
 
+
 const mapImageTagsToTags = (imageTags) =>
     imageTags
         .filter((it) => it.isDeleted === false && it.tag?.isDeleted === false)
         .map((it) => it.tag);
+
 
 const getImages = async (req, res) => {
     try {
@@ -102,6 +106,7 @@ const getImages = async (req, res) => {
     }
 };
 
+
 const searchImages = async (req, res) => {
     try {
         const search = typeof req.query.search === "string" ? req.query.search.trim() : "";
@@ -160,6 +165,7 @@ const searchImages = async (req, res) => {
     }
 };
 
+
 const getImageById = async (req, res) => {
     try {
         const id = parseId(req.params.id);
@@ -203,6 +209,7 @@ const getImageById = async (req, res) => {
         return res.status(httpError.status).json({ error: httpError.message });
     }
 };
+
 
 const createImage = async (req, res) => {
     try {
@@ -267,6 +274,7 @@ const createImage = async (req, res) => {
         return res.status(httpError.status).json({ error: httpError.message });
     }
 };
+
 
 const updateImage = async (req, res) => {
     try {
@@ -365,6 +373,7 @@ const updateImage = async (req, res) => {
     }
 };
 
+
 const deleteImage = async (req, res) => {
     try {
         const id = parseId(req.params.id);
@@ -391,6 +400,7 @@ const deleteImage = async (req, res) => {
         return res.status(httpError.status).json({ error: httpError.message });
     }
 };
+
 
 const getImageByTags = async (req, res) => {
     try {
@@ -443,6 +453,7 @@ const getImageByTags = async (req, res) => {
     }
 };
 
+
 const getImageByCategory = async (req, res) => {
     try {
         const categoryId = parseId(req.params.id);
@@ -486,6 +497,7 @@ const getImageByCategory = async (req, res) => {
         return res.status(httpError.status).json({ error: httpError.message });
     }
 };
+
 
 const addImageTags = async (req, res) => {
     try {
@@ -547,6 +559,7 @@ const addImageTags = async (req, res) => {
     }
 };
 
+
 const removeImageTag = async (req, res) => {
     try {
         const imageId = parseId(req.params.id);
@@ -583,6 +596,7 @@ const removeImageTag = async (req, res) => {
         return res.status(httpError.status).json({ error: httpError.message });
     }
 };
+
 
 const uploadImage = async (req, res) => {
     try {

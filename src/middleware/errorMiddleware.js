@@ -7,39 +7,36 @@ const notFound = (req, res, next) => {
 };
 
 const errorHandler = (err, req, res, next) => {
-    const statusCode = err.statusCode || 500;
-    const status = err.status || "error";
+    let statusCode = err.statusCode || 500;
+    let message = err.message || "Internal server error";
 
-    if(err instanceof Prisma.PrismaClientValidationError){
-        if(err.code === "P2002"){
+    if (err instanceof SyntaxError && err.status === 400 && "body" in err) {
+        statusCode = 400;
+        message = "Invalid JSON payload";
+    }
+
+    if (err instanceof Prisma.PrismaClientKnownRequestError) {
+        if (err.code === "P2002") {
             const field = err.meta?.target?.[0] || "field";
-            err.statusCode = 400;
-            err.message = `${field} already exists`;
-        }
-
-        if(err.code === "P2025"){
-            err.statusCode = 404;
-            err.message = "Record not found";
-        }
-
-        if(err instanceof Prisma.PrismaClientKnownRequestError){
-            if(err.code === "P2003"){
-                err.statusCode = 400;
-                err.message = "Invalid reference: related record not found";
-            }
+            statusCode = 400;
+            message = `${field} already exists`;
+        } else if (err.code === "P2003") {
+            statusCode = 400;
+            message = "Invalid reference: related record not found";
+        } else if (err.code === "P2025") {
+            statusCode = 404;
+            message = "Record not found";
         }
     }
 
-    if(err instanceof Error){
-        err.statusCode = err.statusCode || 500;
-        err.status = err.status || "error";
+    if (err instanceof Prisma.PrismaClientValidationError) {
+        statusCode = 400;
+        message = "Bad request";
     }
 
     res.status(statusCode).json({
-        status,
-        message: err.message,
-        stack: process.env.NODE_ENV === "development" ? err.stack : {},
+        error: message,
     });
+};
 
-}
 export { notFound, errorHandler };
