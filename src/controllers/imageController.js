@@ -1,6 +1,7 @@
 import { prisma } from "../config/db.js";
 import { deleteByPrefix, getCachedJson, setCachedJson } from "../config/redis.js";
 import { uploadImageToS3 } from "../config/s3.js";
+import { imageSize } from "image-size";
 import { toHttpError } from "../utils/prismaErrors.js";
 
 const IMAGE_CACHE_TTL_SECONDS = Number(process.env.IMAGE_CACHE_TTL_SECONDS) || 300;
@@ -38,6 +39,22 @@ const mapImageTagsToTags = (imageTags) =>
     imageTags
         .filter((it) => it.isDeleted === false && it.tag?.isDeleted === false)
         .map((it) => it.tag);
+
+const getUploadedImageDimensions = (file) => {
+    try {
+        const dimensions = imageSize(file.buffer);
+        if (!dimensions.width || !dimensions.height) {
+            return null;
+        }
+
+        return {
+            width: dimensions.width,
+            height: dimensions.height,
+        };
+    } catch {
+        return null;
+    }
+};
 
 
 const getImages = async (req, res) => {
@@ -620,6 +637,11 @@ const uploadImage = async (req, res) => {
             return res.status(400).json({ error: "file is required" });
         }
 
+        const dimensions = getUploadedImageDimensions(req.file);
+        if (!dimensions) {
+            return res.status(400).json({ error: "Invalid image file" });
+        }
+
         const image = await prisma.image.findFirst({
             where: { id: imageId, isDeleted: false },
             select: { id: true },
@@ -638,7 +660,11 @@ const uploadImage = async (req, res) => {
 
         await prisma.image.update({
             where: { id: imageId },
-            data: { url: uploaded.url },
+            data: {
+                url: uploaded.url,
+                width: dimensions.width,
+                height: dimensions.height,
+            },
         });
 
         await invalidateImageCache();
@@ -646,7 +672,7 @@ const uploadImage = async (req, res) => {
         return res.status(200).json({
             status: "success",
             message: "Image uploaded successfully",
-            data: { imageId, ...uploaded },
+            data: { imageId, ...uploaded, ...dimensions },
         });
     } catch (error) {
         console.error("Upload image error:", error.message);
