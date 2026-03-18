@@ -3,6 +3,7 @@ import {config} from 'dotenv';
 import cookieParser from "cookie-parser";
 import { connectDB, disconnectDB } from './config/db.js';
 import { connectRedis, disconnectRedis } from "./config/redis.js";
+import { errorHandler, notFound } from "./middleware/errorMiddleware.js";
 
 import userRoutes from './routers/userRoutes.js';
 import authRoutes from './routers/authRoutes.js';
@@ -30,6 +31,8 @@ app.use("/auth", authRoutes);
 app.use("/categories", categoryRoutes);
 app.use("/tags", tagRoutes);
 app.use("/images", imageRoutes);
+app.use(notFound);
+app.use(errorHandler);
 
 const port = Number(process.env.PORT) || 5001;
 const host = process.env.HOST || "localhost";
