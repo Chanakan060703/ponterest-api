@@ -21,12 +21,6 @@ const parseIdList = (raw) => {
     return Array.from(new Set(ids));
 };
 
-const toCacheKeyPart = (value) => (value === null || value === undefined ? "all" : String(value));
-
-const buildImageListCacheKey = (categoryId, tagId) =>
-    `${IMAGE_CACHE_PREFIX}list:category=${toCacheKeyPart(categoryId)}:tag=${toCacheKeyPart(tagId)}`;
-
-
 const buildImageDetailCacheKey = (id) => `${IMAGE_CACHE_PREFIX}detail:${id}`;
 
 
