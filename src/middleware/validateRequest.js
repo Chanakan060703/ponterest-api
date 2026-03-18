@@ -7,7 +7,6 @@ export const validateRequest = (schema, source = "body") => {
             return res.status(400).json({ error: flatErrors.join(", ") });
         }
 
-        req[source] = result.data;
         next();
     };
 };
