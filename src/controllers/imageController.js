@@ -1,5 +1,6 @@
 import { prisma } from "../config/db.js";
 import { deleteByPrefix, getCachedJson, setCachedJson } from "../config/redis.js";
+import { uploadImageToS3 } from "../config/s3.js";
 import { toHttpError } from "../utils/prismaErrors.js";
 
 const IMAGE_CACHE_TTL_SECONDS = Number(process.env.IMAGE_CACHE_TTL_SECONDS) || 300;
@@ -143,9 +144,10 @@ const createImage = async (req, res) => {
         if (typeof name !== "string" || name.trim().length === 0) {
             return res.status(400).json({ error: "name is required" });
         }
-        if (typeof url !== "string" || url.trim().length === 0) {
-            return res.status(400).json({ error: "url is required" });
+        if (url !== undefined && typeof url !== "string") {
+            return res.status(400).json({ error: "url must be a string" });
         }
+        const normalizedUrl = typeof url === "string" ? url.trim() : "";
 
         const categoryIdParsed = parseId(categoryId);
         if (categoryIdParsed === null) {
@@ -176,7 +178,7 @@ const createImage = async (req, res) => {
         const image = await prisma.image.create({
             data: {
                 name: name.trim(),
-                url: url.trim(),
+                url: normalizedUrl,
                 categoryId: categoryIdParsed,
             },
         });
@@ -448,6 +450,51 @@ const removeImageTag = async (req, res) => {
     }
 };
 
+const uploadImage = async (req, res) => {
+    try {
+        const imageId = parseId(req.body.imageId);
+        if (imageId === null) {
+            return res.status(400).json({ error: "imageId is required" });
+        }
+
+        if (!req.file) {
+            return res.status(400).json({ error: "file is required" });
+        }
+
+        const image = await prisma.image.findFirst({
+            where: { id: imageId, isDeleted: false },
+            select: { id: true },
+        });
+
+        if (!image) {
+            return res.status(404).json({ error: "Image not found" });
+        }
+
+        const uploaded = await uploadImageToS3({
+            buffer: req.file.buffer,
+            mimeType: req.file.mimetype,
+            originalName: req.file.originalname,
+            imageId,
+        });
+
+        await prisma.image.update({
+            where: { id: imageId },
+            data: { url: uploaded.url },
+        });
+
+        await invalidateImageCache();
+
+        return res.status(200).json({
+            status: "success",
+            message: "Image uploaded successfully",
+            data: { imageId, ...uploaded },
+        });
+    } catch (error) {
+        console.error("Upload image error:", error.message);
+        return res.status(500).json({ error: "Failed to upload image" });
+    }
+};
+
 export {
     getImages,
     getImageById,
@@ -457,4 +504,5 @@ export {
     getImageTags,
     addImageTags,
     removeImageTag,
+    uploadImage,
 };
