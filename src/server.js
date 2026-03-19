@@ -17,14 +17,14 @@ await connectDB();
 await connectRedis();
 
 const app = express();
-
+a
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use((req, res, next) => {
     const origin = req.headers.origin;
-    if (origin === 'http://localhost:3000') {
+    if (origin === 'http://localhost:3000' || origin === 'https://ponterest-frontend-git-dev-chanakan060703s-projects.vercel.app') {
     res.setHeader('Access-Control-Allow-Origin', origin);
     }
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
