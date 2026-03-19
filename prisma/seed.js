@@ -143,7 +143,7 @@ async function main() {
         }
 
         console.log("Database seeded successfully!");
-    });
+    }, { maxWait: 10000, timeout: 60000 });
 }
 
 main()
