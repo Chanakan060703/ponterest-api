@@ -1,6 +1,7 @@
 import { prisma } from "../config/db.js";
 import { toHttpError } from "../utils/prismaErrors.js";
 
+
 const createTag = async (req, res) => {
     try {
         const { name } = req.body;
@@ -18,12 +19,12 @@ const createTag = async (req, res) => {
 
         const tag = existing
             ? await prisma.tag.update({
-                  where: { id: existing.id },
-                  data: { isDeleted: false },
-              })
+                where: { id: existing.id },
+                data: { isDeleted: false },
+            })
             : await prisma.tag.create({
-                  data: { name: name.trim() },
-              });
+                data: { name: name.trim() },
+            });
 
         return res.status(201).json({
             status: "success",
@@ -35,6 +36,7 @@ const createTag = async (req, res) => {
         return res.status(httpError.status).json({ error: httpError.message });
     }
 };
+
 
 const getTags = async (req, res) => {
     try {
@@ -52,6 +54,7 @@ const getTags = async (req, res) => {
         return res.status(httpError.status).json({ error: httpError.message });
     }
 };
+
 
 const updateTag = async (req, res) => {
     try {
@@ -99,6 +102,7 @@ const updateTag = async (req, res) => {
         return res.status(httpError.status).json({ error: httpError.message });
     }
 };
+
 
 const deleteTag = async (req, res) => {
     try {

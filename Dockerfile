@@ -19,6 +19,11 @@ COPY prisma.config.ts ./prisma.config.ts
 RUN npx prisma generate
 RUN npm prune --omit=dev
 
+FROM deps AS migrate
+COPY prisma ./prisma
+COPY prisma.config.ts ./prisma.config.ts
+CMD ["npx", "prisma", "migrate", "deploy"]
+
 FROM base AS runtime
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
@@ -36,8 +41,3 @@ HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||5001)+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 CMD ["node", "src/server.js"]
-
-FROM deps AS migrate
-COPY prisma ./prisma
-COPY prisma.config.ts ./prisma.config.ts
-CMD ["npx", "prisma", "migrate", "deploy"]

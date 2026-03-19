@@ -2,6 +2,8 @@ import express from 'express';
 import {config} from 'dotenv';
 import cookieParser from "cookie-parser";
 import { connectDB, disconnectDB } from './config/db.js';
+import { connectRedis, disconnectRedis } from "./config/redis.js";
+import { errorHandler, notFound } from "./middleware/errorMiddleware.js";
 
 import userRoutes from './routers/userRoutes.js';
 import authRoutes from './routers/authRoutes.js';
@@ -12,12 +14,32 @@ import imageRoutes from './routers/imageRoutes.js';
 config();
 
 await connectDB();
+await connectRedis();
 
 const app = express();
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
 
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    }
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cache-Control, X-Requested-With');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    
+    if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+    }
+    next();
+});
 
 app.get("/health", (req, res) => {
     res.status(200).json({ status: "ok" });
@@ -28,6 +50,9 @@ app.use("/auth", authRoutes);
 app.use("/categories", categoryRoutes);
 app.use("/tags", tagRoutes);
 app.use("/images", imageRoutes);
+
+app.use(notFound);
+app.use(errorHandler);
 
 const port = Number(process.env.PORT) || 5001;
 const host = process.env.HOST || "localhost";
@@ -42,6 +67,7 @@ const shutdown = async (reason, exitCode) => {
 
     try {
         console.log(`Shutting down (${reason})`);
+        await disconnectRedis();
         await disconnectDB();
     } catch (error) {
         console.error("Error during shutdown:", error);

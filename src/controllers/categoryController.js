@@ -18,12 +18,12 @@ const createCategory = async (req, res) => {
 
         const category = existing
             ? await prisma.category.update({
-                  where: { id: existing.id },
-                  data: { isDeleted: false },
-              })
+                where: { id: existing.id },
+                data: { isDeleted: false },
+            })
             : await prisma.category.create({
-                  data: { name: name.trim() },
-              });
+                data: { name: name.trim() },
+            });
 
         return res.status(201).json({
             status: "success",
@@ -35,6 +35,7 @@ const createCategory = async (req, res) => {
         return res.status(httpError.status).json({ error: httpError.message });
     }
 };
+
 
 const getCategories = async (req, res) => {
     try {
@@ -52,6 +53,7 @@ const getCategories = async (req, res) => {
         return res.status(httpError.status).json({ error: httpError.message });
     }
 };
+
 
 const updateCategory = async (req, res) => {
     try {
@@ -99,6 +101,7 @@ const updateCategory = async (req, res) => {
         return res.status(httpError.status).json({ error: httpError.message });
     }
 };
+
 
 const deleteCategory = async (req, res) => {
     try {

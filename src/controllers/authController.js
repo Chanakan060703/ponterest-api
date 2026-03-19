@@ -1,6 +1,6 @@
 import { prisma } from "../config/db.js";
 import bcrypt from "bcryptjs";
-import { generateToken } from "../utils/generateToken.js";
+import { generateToken, getJwtCookieOptions } from "../utils/generateToken.js";
 import { toHttpError } from "../utils/prismaErrors.js";
 
 const register = async (req, res) => {
@@ -90,6 +90,7 @@ const login = async (req, res) => {
             data: {
                 user: {
                     id: user.id,
+                    name: user.name,
                     email: user.email,
                 },
                 token,
@@ -101,9 +102,10 @@ const login = async (req, res) => {
     }
 };
 
+
 const logout = async (req, res) => {
     res.cookie("jwt", "", {
-        httpOnly: true,
+        ...getJwtCookieOptions(),
         expires: new Date(0),
     });
     res.status(200).json({
