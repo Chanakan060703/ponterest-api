@@ -17,7 +17,7 @@ await connectDB();
 await connectRedis();
 
 const app = express();
-a
+
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
