@@ -1,6 +1,7 @@
 import { prisma } from "../config/db.js";
 import { deleteByPrefix, getCachedJson, setCachedJson } from "../config/redis.js";
 import { uploadImageToS3 } from "../config/s3.js";
+import { imageSize } from "image-size";
 import { toHttpError } from "../utils/prismaErrors.js";
 
 const IMAGE_CACHE_TTL_SECONDS = Number(process.env.IMAGE_CACHE_TTL_SECONDS) || 300;
@@ -20,12 +21,6 @@ const parseIdList = (raw) => {
     return Array.from(new Set(ids));
 };
 
-const toCacheKeyPart = (value) => (value === null || value === undefined ? "all" : String(value));
-
-const buildImageListCacheKey = (categoryId, tagId) =>
-    `${IMAGE_CACHE_PREFIX}list:category=${toCacheKeyPart(categoryId)}:tag=${toCacheKeyPart(tagId)}`;
-
-
 const buildImageDetailCacheKey = (id) => `${IMAGE_CACHE_PREFIX}detail:${id}`;
 
 
@@ -39,23 +34,36 @@ const mapImageTagsToTags = (imageTags) =>
         .filter((it) => it.isDeleted === false && it.tag?.isDeleted === false)
         .map((it) => it.tag);
 
+const getUploadedImageDimensions = (file) => {
+    try {
+        const dimensions = imageSize(file.buffer);
+        if (!dimensions.width || !dimensions.height) {
+            return null;
+        }
+
+        return {
+            width: dimensions.width,
+            height: dimensions.height,
+        };
+    } catch {
+        return null;
+    }
+};
+
 
 const getImages = async (req, res) => {
     try {
         const categoryId = req.query.categoryId ? parseId(req.query.categoryId) : null;
         const tagId = req.query.tagId ? parseId(req.query.tagId) : null;
+        const page = Math.max(1, parseInt(req.query.page) || 1);
+        const limit = Math.max(1, parseInt(req.query.limit) || 10);
+        const skip = (page - 1) * limit;
 
         if (req.query.categoryId && categoryId === null) {
             return res.status(400).json({ error: "Invalid categoryId" });
         }
         if (req.query.tagId && tagId === null) {
             return res.status(400).json({ error: "Invalid tagId" });
-        }
-
-        const cacheKey = buildImageListCacheKey(categoryId, tagId);
-        const cachedResponse = await getCachedJson(cacheKey);
-        if (cachedResponse) {
-            return res.status(200).json(cachedResponse);
         }
 
         const where = {
@@ -75,16 +83,22 @@ const getImages = async (req, res) => {
             category: { is: { isDeleted: false } },
         };
 
-        const images = await prisma.image.findMany({
-            where,
-            include: {
-                category: true,
-                imageTags: {
-                    where: { isDeleted: false, tag: { is: { isDeleted: false } } },
-                    include: { tag: true },
+        const [images, totalCount] = await Promise.all([
+            prisma.image.findMany({
+                where,
+                skip,
+                take: limit,
+                orderBy: { createdAt: "desc" },
+                include: {
+                    category: true,
+                    imageTags: {
+                        where: { isDeleted: false, tag: { is: { isDeleted: false } } },
+                        include: { tag: true },
+                    },
                 },
-            },
-        });
+            }),
+            prisma.image.count({ where }),
+        ]);
 
         const data = images.map((img) => ({
             ...img,
@@ -95,10 +109,18 @@ const getImages = async (req, res) => {
         const responseBody = {
             status: "success",
             message: "Images fetched successfully",
-            data: { images: data },
+            data: { 
+                images: data,
+                pagination: {
+                    currentPage: page,
+                    limit,
+                    totalCount,
+                    totalPages: Math.ceil(totalCount / limit),
+                    hasNextPage: page < Math.ceil(totalCount / limit),
+                }
+            },
         };
 
-        await setCachedJson(cacheKey, responseBody, IMAGE_CACHE_TTL_SECONDS);
         return res.status(200).json(responseBody);
     } catch (error) {
         const httpError = toHttpError(error);
@@ -609,6 +631,11 @@ const uploadImage = async (req, res) => {
             return res.status(400).json({ error: "file is required" });
         }
 
+        const dimensions = getUploadedImageDimensions(req.file);
+        if (!dimensions) {
+            return res.status(400).json({ error: "Invalid image file" });
+        }
+
         const image = await prisma.image.findFirst({
             where: { id: imageId, isDeleted: false },
             select: { id: true },
@@ -627,7 +654,11 @@ const uploadImage = async (req, res) => {
 
         await prisma.image.update({
             where: { id: imageId },
-            data: { url: uploaded.url },
+            data: {
+                url: uploaded.url,
+                width: dimensions.width,
+                height: dimensions.height,
+            },
         });
 
         await invalidateImageCache();
@@ -635,7 +666,7 @@ const uploadImage = async (req, res) => {
         return res.status(200).json({
             status: "success",
             message: "Image uploaded successfully",
-            data: { imageId, ...uploaded },
+            data: { imageId, ...uploaded, ...dimensions },
         });
     } catch (error) {
         console.error("Upload image error:", error.message);
