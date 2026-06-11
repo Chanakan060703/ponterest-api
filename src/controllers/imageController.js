@@ -132,32 +132,39 @@ const getImages = async (req, res) => {
 const searchImages = async (req, res) => {
     try {
         const search = typeof req.query.search === "string" ? req.query.search.trim() : "";
+        const isHashtagSearch = search.startsWith("#");
+        const tagSearch = isHashtagSearch ? search.slice(1).trim() : "";
         const baseWhere = {
             isDeleted: false,
             category: { is: { isDeleted: false } },
         };
-        const where = search
-            ? {
+        const tagWhere = {
+            imageTags: {
+                some: {
+                    isDeleted: false,
+                    tag: {
+                        is: {
+                            isDeleted: false,
+                            name: { contains: isHashtagSearch ? tagSearch : search, mode: "insensitive" },
+                        },
+                    },
+                },
+            },
+        };
+        let where = baseWhere;
+
+        if (isHashtagSearch && tagSearch) {
+            where = { ...baseWhere, ...tagWhere };
+        } else if (!isHashtagSearch && search) {
+            where = {
                 ...baseWhere,
                 OR: [
                     { name: { contains: search, mode: "insensitive" } },
                     { category: { is: { name: { contains: search, mode: "insensitive" }, isDeleted: false } } },
-                    {
-                        imageTags: {
-                            some: {
-                                isDeleted: false,
-                                tag: {
-                                    is: {
-                                        isDeleted: false,
-                                        name: { contains: search, mode: "insensitive" },
-                                    },
-                                },
-                            },
-                        },
-                    },
+                    tagWhere,
                 ],
-            }
-            : baseWhere;
+            };
+        }
 
         const images = await prisma.image.findMany({
             where,
