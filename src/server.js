@@ -10,6 +10,7 @@ import authRoutes from './routers/authRoutes.js';
 import categoryRoutes from './routers/categoryRoutes.js';
 import tagRoutes from './routers/tagRoutes.js';
 import imageRoutes from './routers/imageRoutes.js';
+import favoriteRoutes from './routers/favoriteRoutes.js';
 
 config();
 
@@ -50,6 +51,7 @@ app.use("/auth", authRoutes);
 app.use("/categories", categoryRoutes);
 app.use("/tags", tagRoutes);
 app.use("/images", imageRoutes);
+app.use("/favorites", favoriteRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
