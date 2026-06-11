@@ -12,11 +12,12 @@ datasource db {
 }
 
 model User {
-  id       Int    @id @default(autoincrement())
-  name     String
-  email    String @unique
-  phone    String @unique
-  password String
+  id             Int             @id @default(autoincrement())
+  name           String
+  email          String          @unique
+  phone          String          @unique
+  password       String
+  favoriteImages FavoriteImage[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -32,17 +33,18 @@ model Category {
 }
 
 model Image {
-  id         Int        @id @default(autoincrement())
-  name       String
-  url        String
-  categoryId Int
-  category   Category   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  width      Int?
-  height     Int?
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
-  isDeleted  Boolean    @default(false)
-  imageTags  ImageTag[]
+  id             Int             @id @default(autoincrement())
+  name           String
+  url            String
+  categoryId     Int
+  category       Category        @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  width          Int?
+  height         Int?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  isDeleted      Boolean         @default(false)
+  imageTags      ImageTag[]
+  favoriteImages FavoriteImage[]
 }
 
 model Tag {
@@ -63,4 +65,17 @@ model ImageTag {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   isDeleted Boolean  @default(false)
+}
+
+model FavoriteImage {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  imageId   Int
+  image     Image    @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, imageId])
+  @@index([userId, createdAt])
+  @@index([imageId])
 }
